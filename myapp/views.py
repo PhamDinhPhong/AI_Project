@@ -9,8 +9,13 @@ from django.conf import settings
 
 # Tải mô hình cảm xúc
 MODEL_PATH = os.path.join(settings.BASE_DIR, 'myapp/model_filter.h5')
-classifier = load_model(MODEL_PATH)
-class_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+try:
+    classifier = load_model(MODEL_PATH, compile=False)
+    class_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+except Exception as e:
+    classifier = None
+    class_labels = []
+    print(f"Error loading model: {e}")
 
 # Cấu hình nhận diện khuôn mặt
 face_classifier = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -22,7 +27,18 @@ def gen_frames():
     Phát trực tiếp video từ camera và gửi khuôn mặt đã nhận diện.
     """
     global latest_prediction
+
+    # Mở camera
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Error: Could not open webcam.")
+        return
+
+    # if not cap.isOpened():
+    #     print("Không thể mở camera")
+    # else:
+    #     print("Camera đã được mở")
+    # cap.release()
 
     while True:
         ret, frame = cap.read()
@@ -44,9 +60,10 @@ def gen_frames():
             roi = img_to_array(roi)
             roi = np.expand_dims(roi, axis=0)
 
-            # Dự đoán cảm xúc
-            preds = classifier.predict(roi)[0]
-            latest_prediction = class_labels[np.argmax(preds)]
+            # Dự đoán cảm xúc (kiểm tra nếu mô hình được tải thành công)
+            if classifier:
+                preds = classifier.predict(roi)[0]
+                latest_prediction = class_labels[np.argmax(preds)]
 
         # Chuyển khung hình về định dạng JPEG
         ret, buffer = cv2.imencode('.jpg', frame)
