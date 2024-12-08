@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        video, img {
+            width: 80%;
+            max-width: 640px;
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+        h1 {
+            color: #444;
+        }
+        p {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #222;
+        }
+        .prediction {
+            margin-top: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #007BFF;
+        }
+    </style>
+</head>
+<body>
+    <h1>Emotion Detection in Real-Time</h1>
+    <img src="/emotion-detection/" alt="Emotion Stream">
+    <p class="prediction">Loading prediction...</p>
+
+    <script>
+        // Hàm lấy dự đoán mới nhất từ API
+        async function fetchPrediction() {
+            try {
+                const response = await fetch('/latest-prediction/');
+                const data = await response.json();
+                document.querySelector('.prediction').textContent = `Current Emotion: ${data.prediction}`;
+            } catch (error) {
+                console.error('Error fetching prediction:', error);
+                document.querySelector('.prediction').textContent = 'Error fetching prediction';
+            }
+        }
+
+        // Gọi API mỗi giây
+        setInterval(fetchPrediction, 1000);
+    </script>
+</body>
+</html>
