@@ -1,18 +1,2 @@
 # Virtual environment
 env/
-
-# Byte-compiled files
-__pycache__/
-*.py[cod]
-*.pyo
-
-# Logs and local files
-*.log
-*.sqlite3
-db.sqlite3
-
-# System files
-.DS_Store
-*.swp
-*.bak
-*.tmp
