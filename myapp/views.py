@@ -34,7 +34,7 @@ def gen_frames():
     global latest_prediction
 
     # Mở camera
-    cap = cv2.VideoCapture(0,cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(2,cv2.CAP_DSHOW)
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         return
