@@ -1,11 +1,16 @@
+import os
 import cv2
 import numpy as np
-import os
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
 from django.http import StreamingHttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
+import tensorflow as tf
+
+# Buộc TensorFlow chỉ sử dụng CPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+tf.config.set_visible_devices([], 'GPU')
 
 # Tải mô hình cảm xúc
 MODEL_PATH = os.path.join(settings.BASE_DIR, 'myapp/model_filter.h5')
@@ -33,12 +38,6 @@ def gen_frames():
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         return
-
-    # if not cap.isOpened():
-    #     print("Không thể mở camera")
-    # else:
-    #     print("Camera đã được mở")
-    # cap.release()
 
     while True:
         ret, frame = cap.read()
