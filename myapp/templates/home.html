@@ -3,32 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Stream</title>
+    <title>Healing Web App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-direction: row;
+            margin: 0;
+            background-color: #f4f4f4; /* Màu nền nhẹ */
+            color: #333; /* Màu chữ tối để dễ đọc */
+            height: 100vh; /* Chiều cao đầy đủ của màn hình */
+            padding: 0 20px;
+            gap: 20px;
+            box-sizing: border-box;
         }
+
+        .camera-container, .music-container {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 48%; /* Mỗi phần chiếm 48% chiều rộng của màn hình */
+            height: 90vh; /* Chiều cao 90% màn hình */
+            box-sizing: border-box;
+        }
+
+        h1, .music-container h2 {
+            color: #4CAF50; /* Màu chữ tiêu đề */
+            margin-bottom: 10px;
+            font-size: 20px; /* Giảm kích thước chữ */
+        }
+
         video {
-            border: 1px solid #ccc;
-            margin-bottom: 20px;
+            border: 2px solid #4CAF50;
+            margin-bottom: 15px;
+            width: 100%;
+            border-radius: 10px;
+            height: 70%; /* Giảm kích thước video */
         }
+
+        .prediction {
+            font-size: 16px; /* Giảm kích thước chữ của dự đoán */
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
         #errorMessage {
             color: red;
             font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px; /* Giảm khoảng cách giữa các nút */
+        }
+
+        #startButton, #stopButton {
+            padding: 8px 16px; /* Giảm kích thước nút */
+            font-size: 14px; /* Giảm kích thước chữ của nút */
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        #startButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #startButton:hover {
+            background-color: #45a049;
+        }
+
+        #stopButton {
+            background-color: #f44336;
+            color: white;
+            display: none;
+        }
+
+        #stopButton:hover {
+            background-color: #e53935;
+        }
+
+        #musicList {
+            margin-top: 15px;
+            text-align: left;
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        #musicList li {
+            margin: 3px 0;
+            font-size: 14px; /* Giảm kích thước chữ trong danh sách nhạc */
+        }
+
+        #musicList a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        #musicList a:hover {
+            text-decoration: underline;
         }
     </style>
+    
+    <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
-    <h1>Camera Stream</h1>
-    <video id="cameraStream" autoplay playsinline width="640" height="480"></video>
-    <p id="prediction">Prediction: <em>Loading...</em></p>
-    <p id="errorMessage"></p>
+    <div class="camera-container">
+        <h1>Camera Stream</h1>
+        <video id="cameraStream" autoplay playsinline width="320" height="240"></video>
+        <p id="prediction" class="prediction">Prediction: <em>Waiting for prediction...</em></p>
+        <div class="controls">
+            <button id="startButton">Start Camera</button>
+            <button id="stopButton">Stop Camera</button>
+        </div>
+        <p id="errorMessage"></p>
+    </div>
+
+    <div class="music-container">
+        <h2>Recommended Music</h2>
+        <ul id="musicList">
+            <!-- Music list will be populated here -->
+        </ul>
+    </div>
+
     <script>
         const video = document.getElementById('cameraStream');
         const predictionElement = document.getElementById('prediction');
         const errorMessageElement = document.getElementById('errorMessage');
+        const musicList = document.getElementById('musicList');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        let cameraStream = null;
+        let isCameraActive = false;
 
         // Function to show error messages
         function showError(message) {
@@ -36,29 +160,42 @@
             console.error(message);
         }
 
-        function getCSRFToken() {
-            const name = 'csrftoken';
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith(name + '=')) {
-                    return cookie.substring(name.length + 1);
-                }
-            }
-            return null;
-        }
-        
-        const csrfToken = getCSRFToken();
+        // Get CSRF token from the meta tag in HTML
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // Get access to the camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then((stream) => {
-                video.srcObject = stream;
-                errorMessageElement.innerText = ''; // Clear any previous error messages
-            })
-            .catch((err) => {
-                showError("Error accessing the camera: " + err.message);
-            });
+        // Start camera when button clicked
+        startButton.addEventListener('click', () => {
+            if (isCameraActive) return; // Prevent restarting if camera is already active
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    cameraStream = stream;
+                    video.srcObject = stream;
+                    isCameraActive = true;
+                    startButton.style.display = 'none';
+                    stopButton.style.display = 'inline-block'; // Show stop button
+                    errorMessageElement.innerText = ''; // Clear any previous error messages
+                })
+                .catch((err) => {
+                    showError("Error accessing the camera: " + err.message);
+                });
+        });
+
+        // Stop camera when button clicked
+        stopButton.addEventListener('click', () => {
+            stopCamera(); // Stop camera immediately when clicked
+        });
+
+        // Function to stop camera
+        function stopCamera() {
+            if (cameraStream) {
+                let tracks = cameraStream.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+                isCameraActive = false;
+                startButton.style.display = 'inline-block'; // Show start button
+                stopButton.style.display = 'none'; // Hide stop button
+            }
+        }
 
         // Send video frames to the server
         function sendFrameToServer() {
@@ -74,21 +211,37 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken, // Thêm CSRF token vào header
+                    'X-CSRFToken': csrfToken, // Add CSRF token to header
                 },
                 body: JSON.stringify({ frame: frameData }),
             })
                 .then((response) => response.json())
                 .then((data) => {
-                    document.getElementById('prediction').innerText = `Prediction: ${data.prediction}`;
+                    if (data.prediction) {
+                        document.getElementById('prediction').innerText = `Prediction: ${data.prediction}`;
+                        updateMusicList(data.youtube_link); // Update music list
+                        stopCamera(); // Stop camera after first prediction
+                    }
                 })
                 .catch((err) => {
                     console.error("Error sending frame to server: ", err);
                 });
         }
 
-        // Periodically send frames to the server
-        setInterval(sendFrameToServer, 1000); // Send frame every second
+        // Update music list based on emotion prediction
+        function updateMusicList(youtubeLink) {
+            musicList.innerHTML = ''; // Clear the current list
+            const musicItem = document.createElement('li');
+            musicItem.innerHTML = `<a href="${youtubeLink}" target="_blank">Listen to this song</a>`;
+            musicList.appendChild(musicItem);
+        }
+
+        // Periodically send frames to the server until emotion is detected
+        setInterval(() => {
+            if (isCameraActive) {
+                sendFrameToServer();
+            }
+        }, 1000); // Send frame every second
     </script>
 </body>
 </html>
